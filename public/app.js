@@ -76,10 +76,20 @@ function initDatePicker() {
         showMonths: isMobile ? 1 : 2,
         onChange: (selectedDateRange) => {
             if (selectedDateRange.length === 2 || selectedDateRange.length === 1) {
+                // Store current month before clearing (for mobile)
+                const currentMonth = flatpickrInstance.currentMonth;
+                const currentYear = flatpickrInstance.currentYear;
+
                 const start = selectedDateRange[0];
                 const end = selectedDateRange.length === 2 ? selectedDateRange[1] : selectedDateRange[0];
                 addDateRange(start, end);
                 flatpickrInstance.clear();
+
+                // Restore the month view on mobile after clearing
+                if (isMobile) {
+                    flatpickrInstance.changeMonth(currentMonth, false);
+                    flatpickrInstance.changeYear(currentYear);
+                }
             }
         },
         onDayCreate: (dObj, dStr, fp, dayElem) => {
@@ -100,7 +110,18 @@ function initDatePicker() {
 // Refresh flatpickr to update highlighting
 function refreshDatePicker() {
     if (flatpickrInstance) {
+        // Store current view state on mobile
+        const isMobile = window.innerWidth <= 600;
+        const currentMonth = isMobile ? flatpickrInstance.currentMonth : null;
+        const currentYear = isMobile ? flatpickrInstance.currentYear : null;
+
         flatpickrInstance.redraw();
+
+        // Restore month view on mobile if it was stored
+        if (isMobile && currentMonth !== null) {
+            flatpickrInstance.changeMonth(currentMonth, false);
+            flatpickrInstance.changeYear(currentYear);
+        }
     }
 }
 
