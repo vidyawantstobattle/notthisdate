@@ -507,15 +507,102 @@ select:focus, input[type="text"]:focus {
 
 /* Responsive */
 @media (max-width: 600px) {
+    .container {
+        padding: 10px;
+    }
+
+    header {
+        padding: 20px 10px;
+    }
+
     header h1 {
         font-size: 1.8rem;
     }
 
+    /* Make tabs look like actual tabs, not buttons */
     .tabs {
-        flex-direction: column;
+        flex-direction: row;
+        gap: 0;
+        background: rgba(255, 255, 255, 0.1);
+        border-radius: 12px 12px 0 0;
+        padding: 0;
+        overflow: hidden;
     }
 
     .tab-btn {
+        flex: 1;
+        width: auto;
+        padding: 14px 10px;
+        border-radius: 0;
+        font-size: 0.85rem;
+        border-bottom: 3px solid transparent;
+    }
+
+    .tab-btn.active {
+        border-radius: 0;
+        border-bottom: 3px solid #1e3a5f;
+        background: white;
+    }
+
+    .tab-content {
+        border-radius: 0 0 16px 16px;
+        padding: 20px 15px;
+    }
+
+    /* Fix date picker overflow */
+    #date-picker-container {
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+        margin: 0 -15px;
+        padding: 0 15px;
+    }
+
+    .flatpickr-calendar {
+        max-width: 100% !important;
+        font-size: 0.9rem !important;
+    }
+
+    .flatpickr-calendar.inline {
+        width: 100% !important;
+        max-width: none !important;
+    }
+
+    /* Make flatpickr show one month at a time on mobile */
+    .flatpickr-months {
+        flex-wrap: wrap;
+    }
+
+    .flatpickr-month {
+        flex-basis: 100% !important;
+    }
+
+    .flatpickr-innerContainer {
+        max-width: 100%;
+    }
+
+    .dayContainer {
+        min-width: auto !important;
+        max-width: 100% !important;
+        width: 100% !important;
+    }
+
+    .flatpickr-days {
+        width: 100% !important;
+    }
+
+    .flatpickr-day {
+        max-width: none !important;
+        height: 40px !important;
+        line-height: 40px !important;
+    }
+
+    /* Button group on mobile */
+    .button-group {
+        flex-direction: column;
+    }
+
+    .btn-primary, .btn-secondary {
+        flex: none;
         width: 100%;
     }
 
@@ -526,6 +613,19 @@ select:focus, input[type="text"]:focus {
     .legend-items {
         flex-direction: column;
         gap: 10px;
+    }
+
+    /* Calendar view days smaller on mobile */
+    .month-calendar {
+        padding: 15px;
+    }
+
+    .calendar-day {
+        font-size: 0.85rem;
+    }
+
+    .calendar-day .unavailable-count {
+        font-size: 0.55rem;
     }
 }
 

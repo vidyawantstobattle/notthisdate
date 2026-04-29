@@ -64,13 +64,16 @@ function initDatePicker() {
     const minDate = new Date(YEAR, 6, 1); // July 1
     const maxDate = new Date(YEAR, 7, 31); // August 31
 
+    // Show 1 month on mobile, 2 on desktop
+    const isMobile = window.innerWidth <= 600;
+
     flatpickrInstance = flatpickr('#date-picker', {
         mode: 'range',
         minDate: minDate,
         maxDate: maxDate,
         dateFormat: 'Y-m-d',
         inline: true,
-        showMonths: 2,
+        showMonths: isMobile ? 1 : 2,
         onChange: (selectedDateRange) => {
             if (selectedDateRange.length === 2 || selectedDateRange.length === 1) {
                 const start = selectedDateRange[0];
