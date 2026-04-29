@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Not This Date - Trip Planner</title>
+    <link rel="stylesheet" href="styles.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>🏖️ Not This Date</h1>
+            <p class="subtitle">Mark the dates you're <strong>NOT</strong> available for our July/August trip!</p>
+        </header>
+
+        <nav class="tabs">
+            <button class="tab-btn active" data-tab="submit">Submit Unavailability</button>
+            <button class="tab-btn" data-tab="calendar">View Availability</button>
+        </nav>
+
+        <!-- Submit Tab -->
+        <div id="submit-tab" class="tab-content active">
+            <div class="form-section">
+                <div class="form-group">
+                    <label for="name-select">Your Name</label>
+                    <select id="name-select" required>
+                        <option value="">Select your name...</option>
+                        <option value="Vidya">Vidya</option>
+                        <option value="Joey">Joey</option>
+                        <option value="Hazel">Hazel</option>
+                        <option value="Mariya">Mariya</option>
+                        <option value="Pim">Pim</option>
+                        <option value="Sanskar">Sanskar</option>
+                        <option value="Thijs">Thijs</option>
+                        <option value="Andrei">Andrei</option>
+                        <option value="Szymon">Szymon</option>
+                        <option value="Egor">Egor</option>
+                        <option value="Sandro">Sandro</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label>Select dates you are <strong>NOT</strong> available</label>
+                    <p class="hint">Click a single date, or click and drag to select a range</p>
+                    <div id="date-picker-container">
+                        <input type="text" id="date-picker" placeholder="Click to select dates..." aria-label="Date picker for unavailable dates">
+                    </div>
+                </div>
+
+                <div class="selected-dates-section">
+                    <h3>Your Unavailable Dates:</h3>
+                    <div id="selected-dates-list" class="dates-list">
+                        <p class="empty-message">No dates selected yet</p>
+                    </div>
+                </div>
+
+                <div class="button-group">
+                    <button id="submit-btn" class="btn-primary" disabled>Submit Unavailability</button>
+                    <button id="reset-btn" class="btn-secondary">Reset My Dates</button>
+                </div>
+
+                <p class="form-hint">💡 No dates selected? That means you're available all summer!</p>
+
+                <div id="submit-status" class="status-message"></div>
+            </div>
+
+            <div class="your-submissions">
+                <h3>Your Previous Submissions</h3>
+                <div id="user-submissions" class="submissions-list">
+                    <p class="empty-message">Select your name to see your submissions</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Calendar View Tab -->
+        <div id="calendar-tab" class="tab-content">
+            <div class="legend">
+                <h3>Legend</h3>
+                <div class="legend-items">
+                    <div class="legend-item">
+                        <span class="legend-color" style="background: #4ade80;"></span>
+                        <span>Everyone available</span>
+                    </div>
+                    <div class="legend-item">
+                        <span class="legend-color" style="background: #a0a0a0;"></span>
+                        <span>Some unavailable</span>
+                    </div>
+                    <div class="legend-item">
+                        <span class="legend-color" style="background: #404040;"></span>
+                        <span>Many unavailable</span>
+                    </div>
+                    <div class="legend-item">
+                        <span class="legend-color" style="background: #1a1a1a;"></span>
+                        <span>All 11 unavailable</span>
+                    </div>
+                    <div class="legend-item">
+                        <span class="legend-color blocked-legend">🚫</span>
+                        <span>Blocked (event)</span>
+                    </div>
+                </div>
+                <p class="legend-note">Click on any date to see who's unavailable</p>
+            </div>
+
+            <div class="calendar-container">
+                <div class="month-calendar">
+                    <h2>July 2026</h2>
+                    <div class="calendar-grid" id="july-calendar">
+                        <!-- Generated by JS -->
+                    </div>
+                </div>
+                <div class="month-calendar">
+                    <h2>August 2026</h2>
+                    <div class="calendar-grid" id="august-calendar">
+                        <!-- Generated by JS -->
+                    </div>
+                </div>
+            </div>
+
+            <div id="date-details" class="date-details hidden">
+                <h3>Date Details</h3>
+                <div id="date-details-content"></div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
+    <script src="app.js"></script>
+</body>
+</html>
+

@@ -1,0 +1,11 @@
+[build]
+  functions = "netlify/functions"
+  publish = "public"
+
+[dev]
+  framework = "#static"
+  targetPort = 3000
+  port = 8888
+  publish = "public"
+  autoLaunch = false
+
