@@ -3,129 +3,167 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Not This Date - Trip Planner</title>
-    <link rel="stylesheet" href="styles.css">
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
+    <title>NotThisDate - Group Availability Planner</title>
+    <link rel="stylesheet" href="./styles.css">
+    <script src="https://identity.netlify.com/v1/netlify-identity-widget.js"></script>
 </head>
 <body>
-    <div class="container">
-        <header>
-            <h1>🏖️ Not This Date</h1>
-            <p class="subtitle">Mark the dates you're <strong>NOT</strong> available for our July/August trip!</p>
+    <div class="app-container">
+        <!-- Header -->
+        <header class="app-header">
+            <div class="header-content">
+                <a href="/" class="logo">🗓️ NotThisDate</a>
+                <nav class="header-nav">
+                    <div id="auth-section">
+                        <!-- Login/Logout buttons will be inserted here -->
+                        <button id="login-btn" class="btn btn-outline">Login</button>
+                        <div id="user-menu" class="user-menu hidden">
+                            <span id="user-name"></span>
+                            <button id="logout-btn" class="btn btn-outline btn-small">Logout</button>
+                        </div>
+                    </div>
+                </nav>
+            </div>
         </header>
 
-        <nav class="tabs">
-            <button class="tab-btn active" data-tab="submit">Submit Unavailability</button>
-            <button class="tab-btn" data-tab="calendar">View Availability</button>
-        </nav>
-
-        <!-- Submit Tab -->
-        <div id="submit-tab" class="tab-content active">
-            <div class="form-section">
-                <div class="form-group">
-                    <label for="name-select">Your Name</label>
-                    <select id="name-select" required>
-                        <option value="">Select your name...</option>
-                        <option value="Vidya">Vidya</option>
-                        <option value="Joey">Joey</option>
-                        <option value="Hazel">Hazel</option>
-                        <option value="Mariya">Mariya</option>
-                        <option value="Pim">Pim</option>
-                        <option value="Sanskar">Sanskar</option>
-                        <option value="Thijs">Thijs</option>
-                        <option value="Andrei">Andrei</option>
-                        <option value="Szymon">Szymon</option>
-                        <option value="Egor">Egor</option>
-                        <option value="Sandro">Sandro</option>
-                    </select>
-                </div>
-
-                <div class="form-group">
-                    <label>Select dates you are <strong>NOT</strong> available</label>
-                    <p class="hint">Click a single date, or click and drag to select a range</p>
-                    <div id="date-picker-container">
-                        <input type="text" id="date-picker" placeholder="Click to select dates..." aria-label="Date picker for unavailable dates">
+        <!-- Main Content -->
+        <main class="main-content">
+            <!-- Landing Page (shown when not logged in) -->
+            <section id="landing-page" class="page">
+                <div class="hero">
+                    <h1>Plan group events without the hassle</h1>
+                    <p class="hero-subtitle">
+                        Find out when your group is <strong>NOT</strong> available,
+                        so you can easily spot the perfect dates for your trip, party, or meetup.
+                    </p>
+                    <div class="hero-actions">
+                        <button id="hero-login-btn" class="btn btn-primary btn-large">Get Started - It's Free</button>
+                        <a href="#how-it-works" class="btn btn-outline btn-large">Learn More</a>
                     </div>
                 </div>
 
-                <div class="selected-dates-section">
-                    <h3>Your Unavailable Dates:</h3>
-                    <div id="selected-dates-list" class="dates-list">
-                        <p class="empty-message">No dates selected yet</p>
+                <section id="how-it-works" class="features-section">
+                    <h2>How It Works</h2>
+                    <div class="features-grid">
+                        <div class="feature-card">
+                            <div class="feature-icon">📅</div>
+                            <h3>Create a Calendar</h3>
+                            <p>Set up a date range and invite your group members by sharing a simple link.</p>
+                        </div>
+                        <div class="feature-card">
+                            <div class="feature-icon">🚫</div>
+                            <h3>Mark Unavailable Dates</h3>
+                            <p>Everyone marks when they CAN'T make it - no more back-and-forth messaging.</p>
+                        </div>
+                        <div class="feature-card">
+                            <div class="feature-icon">✅</div>
+                            <h3>Find the Best Date</h3>
+                            <p>Instantly see which dates work for everyone with our visual availability grid.</p>
+                        </div>
                     </div>
+                </section>
+            </section>
+
+            <!-- Dashboard (shown when logged in) -->
+            <section id="dashboard-page" class="page hidden">
+                <div class="dashboard-header">
+                    <h1>Your Calendars</h1>
+                    <button id="create-calendar-btn" class="btn btn-primary">
+                        <span class="btn-icon">+</span> Create New Calendar
+                    </button>
                 </div>
 
-                <div class="button-group">
-                    <button id="submit-btn" class="btn-primary" disabled>Submit Unavailability</button>
-                    <button id="reset-btn" class="btn-secondary">Reset My Dates</button>
+                <div id="calendars-list" class="calendars-grid">
+                    <!-- Calendar cards will be inserted here -->
+                    <div class="loading-spinner">Loading your calendars...</div>
                 </div>
 
-                <p class="form-hint">💡 No dates selected? That means you're available all summer!</p>
+                <!-- Empty State -->
+                <div id="no-calendars" class="empty-state hidden">
+                    <div class="empty-icon">📅</div>
+                    <h3>No calendars yet</h3>
+                    <p>Create your first calendar to start planning with your group!</p>
+                    <button id="create-first-calendar-btn" class="btn btn-primary">Create Calendar</button>
+                </div>
+            </section>
 
-                <div id="submit-status" class="status-message"></div>
+            <!-- Create Calendar Modal -->
+            <div id="create-calendar-modal" class="modal hidden">
+                <div class="modal-backdrop"></div>
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h2>Create New Calendar</h2>
+                        <button class="modal-close">&times;</button>
+                    </div>
+                    <form id="create-calendar-form">
+                        <div class="form-group">
+                            <label for="calendar-name">Calendar Name *</label>
+                            <input type="text" id="calendar-name" required placeholder="e.g., Summer Trip 2026">
+                        </div>
+
+                        <div class="form-group">
+                            <label for="calendar-description">Description (optional)</label>
+                            <textarea id="calendar-description" placeholder="What are you planning?"></textarea>
+                        </div>
+
+                        <div class="form-group">
+                            <label>Date Range</label>
+                            <div class="date-range-options">
+                                <label class="radio-option">
+                                    <input type="radio" name="date-range-type" value="custom" checked>
+                                    <span>Custom Range</span>
+                                </label>
+                                <label class="radio-option">
+                                    <input type="radio" name="date-range-type" value="open">
+                                    <span>Open-ended (next 6 months)</span>
+                                </label>
+                            </div>
+                            <div id="custom-date-range" class="date-inputs">
+                                <div class="date-input-group">
+                                    <label for="start-date">Start Date</label>
+                                    <input type="date" id="start-date">
+                                </div>
+                                <div class="date-input-group">
+                                    <label for="end-date">End Date</label>
+                                    <input type="date" id="end-date">
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="form-group">
+                            <label>Participants</label>
+                            <div class="participants-options">
+                                <label class="radio-option">
+                                    <input type="radio" name="participants-type" value="defined" checked>
+                                    <span>Specific people</span>
+                                </label>
+                                <label class="radio-option">
+                                    <input type="radio" name="participants-type" value="open">
+                                    <span>Anyone with the link</span>
+                                </label>
+                            </div>
+                            <div id="defined-participants">
+                                <p class="form-hint">Enter names (one per line or comma-separated)</p>
+                                <textarea id="participants-list" placeholder="Alice&#10;Bob&#10;Charlie"></textarea>
+                            </div>
+                        </div>
+
+                        <div class="form-actions">
+                            <button type="button" class="btn btn-outline modal-cancel">Cancel</button>
+                            <button type="submit" class="btn btn-primary">Create Calendar</button>
+                        </div>
+                    </form>
+                </div>
             </div>
+        </main>
 
-            <div class="your-submissions">
-                <h3>Your Previous Submissions</h3>
-                <div id="user-submissions" class="submissions-list">
-                    <p class="empty-message">Select your name to see your submissions</p>
-                </div>
-            </div>
-        </div>
-
-        <!-- Calendar View Tab -->
-        <div id="calendar-tab" class="tab-content">
-            <div class="legend">
-                <h3>Legend</h3>
-                <div class="legend-items">
-                    <div class="legend-item">
-                        <span class="legend-color" style="background: #4ade80;"></span>
-                        <span>Everyone available</span>
-                    </div>
-                    <div class="legend-item">
-                        <span class="legend-color" style="background: #a0a0a0;"></span>
-                        <span>Some unavailable</span>
-                    </div>
-                    <div class="legend-item">
-                        <span class="legend-color" style="background: #404040;"></span>
-                        <span>Many unavailable</span>
-                    </div>
-                    <div class="legend-item">
-                        <span class="legend-color" style="background: #1a1a1a;"></span>
-                        <span>All 11 unavailable</span>
-                    </div>
-                    <div class="legend-item">
-                        <span class="legend-color blocked-legend">🚫</span>
-                        <span>Blocked (event)</span>
-                    </div>
-                </div>
-                <p class="legend-note">Click on any date to see who's unavailable</p>
-            </div>
-
-            <div class="calendar-container">
-                <div class="month-calendar">
-                    <h2>July 2026</h2>
-                    <div class="calendar-grid" id="july-calendar">
-                        <!-- Generated by JS -->
-                    </div>
-                </div>
-                <div class="month-calendar">
-                    <h2>August 2026</h2>
-                    <div class="calendar-grid" id="august-calendar">
-                        <!-- Generated by JS -->
-                    </div>
-                </div>
-            </div>
-
-            <div id="date-details" class="date-details hidden">
-                <h3>Date Details</h3>
-                <div id="date-details-content"></div>
-            </div>
-        </div>
+        <!-- Footer -->
+        <footer class="app-footer">
+            <p>Made with ❤️ for easier group planning</p>
+        </footer>
     </div>
 
-    <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
-    <script src="app.js"></script>
+    <script src="./app.js" type="module"></script>
 </body>
 </html>
 

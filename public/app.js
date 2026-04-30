@@ -1,558 +1,356 @@
-// Configuration
-const YEAR = 2026;
-const TOTAL_PEOPLE = 11;
-const FRIENDS = ['Vidya', 'Joey', 'Hazel', 'Mariya', 'Pim', 'Sanskar', 'Thijs', 'Andrei', 'Szymon', 'Egor', 'Sandro'];
+// ===== NETLIFY IDENTITY SETUP =====
+const netlifyIdentity = window.netlifyIdentity;
+let currentUser = null;
 
-// Blocked dates (events that block everyone)
-const BLOCKED_DATES = {
-    '2026-07-03': { reason: 'Golf Trip', blockedFor: 'everyone' }
-};
+// Initialize Netlify Identity
+function initAuth() {
+    netlifyIdentity.on('init', user => {
+        currentUser = user;
+        updateUI();
+    });
 
-// State
-let selectedDates = [];
-let userSubmittedDates = []; // Dates the current user has already submitted
-let flatpickrInstance = null;
-let allUnavailability = {};
+    netlifyIdentity.on('login', user => {
+        currentUser = user;
+        netlifyIdentity.close();
+        updateUI();
+        loadUserCalendars();
+    });
 
-// DOM Elements
-const nameSelect = document.getElementById('name-select');
-const submitBtn = document.getElementById('submit-btn');
-const resetBtn = document.getElementById('reset-btn');
-const selectedDatesList = document.getElementById('selected-dates-list');
-const submitStatus = document.getElementById('submit-status');
-const userSubmissions = document.getElementById('user-submissions');
-const julyCalendar = document.getElementById('july-calendar');
-const augustCalendar = document.getElementById('august-calendar');
-const dateDetails = document.getElementById('date-details');
-const dateDetailsContent = document.getElementById('date-details-content');
+    netlifyIdentity.on('logout', () => {
+        currentUser = null;
+        updateUI();
+    });
 
-// Initialize
+    netlifyIdentity.init();
+}
+
+// Update UI based on auth state
+function updateUI() {
+    const loginBtn = document.getElementById('login-btn');
+    const userMenu = document.getElementById('user-menu');
+    const userName = document.getElementById('user-name');
+    const landingPage = document.getElementById('landing-page');
+    const dashboardPage = document.getElementById('dashboard-page');
+
+    if (currentUser) {
+        // User is logged in
+        loginBtn.classList.add('hidden');
+        userMenu.classList.remove('hidden');
+        userName.textContent = currentUser.user_metadata?.full_name || currentUser.email;
+
+        landingPage.classList.add('hidden');
+        dashboardPage.classList.remove('hidden');
+    } else {
+        // User is logged out
+        loginBtn.classList.remove('hidden');
+        userMenu.classList.add('hidden');
+
+        landingPage.classList.remove('hidden');
+        dashboardPage.classList.add('hidden');
+    }
+}
+
+// ===== EVENT LISTENERS =====
 document.addEventListener('DOMContentLoaded', () => {
-    initTabs();
-    initDatePicker();
-    initFormHandlers();
-    loadAllUnavailability();
+    initAuth();
+    setupEventListeners();
+    setDefaultDates();
 });
 
-// Tab Switching
-function initTabs() {
-    const tabBtns = document.querySelectorAll('.tab-btn');
-    tabBtns.forEach(btn => {
-        btn.addEventListener('click', () => {
-            const tabId = btn.dataset.tab;
+function setupEventListeners() {
+    // Login buttons
+    document.getElementById('login-btn')?.addEventListener('click', () => {
+        netlifyIdentity.open('login');
+    });
 
-            // Update buttons
-            tabBtns.forEach(b => b.classList.remove('active'));
-            btn.classList.add('active');
+    document.getElementById('hero-login-btn')?.addEventListener('click', () => {
+        netlifyIdentity.open('login');
+    });
 
-            // Update content
-            document.querySelectorAll('.tab-content').forEach(content => {
-                content.classList.remove('active');
-            });
-            document.getElementById(`${tabId}-tab`).classList.add('active');
+    // Logout button
+    document.getElementById('logout-btn')?.addEventListener('click', () => {
+        netlifyIdentity.logout();
+    });
 
-            // Refresh calendar when switching to it
-            if (tabId === 'calendar') {
-                loadAllUnavailability();
+    // Create calendar buttons
+    document.getElementById('create-calendar-btn')?.addEventListener('click', openCreateModal);
+    document.getElementById('create-first-calendar-btn')?.addEventListener('click', openCreateModal);
+
+    // Modal controls
+    document.querySelector('.modal-close')?.addEventListener('click', closeCreateModal);
+    document.querySelector('.modal-cancel')?.addEventListener('click', closeCreateModal);
+    document.querySelector('.modal-backdrop')?.addEventListener('click', closeCreateModal);
+
+    // Form handling
+    document.getElementById('create-calendar-form')?.addEventListener('submit', handleCreateCalendar);
+
+    // Date range type toggle
+    document.querySelectorAll('input[name="date-range-type"]').forEach(radio => {
+        radio.addEventListener('change', (e) => {
+            const customRange = document.getElementById('custom-date-range');
+            if (e.target.value === 'custom') {
+                customRange.style.display = 'flex';
+            } else {
+                customRange.style.display = 'none';
+            }
+        });
+    });
+
+    // Participants type toggle
+    document.querySelectorAll('input[name="participants-type"]').forEach(radio => {
+        radio.addEventListener('change', (e) => {
+            const definedParticipants = document.getElementById('defined-participants');
+            if (e.target.value === 'defined') {
+                definedParticipants.style.display = 'block';
+            } else {
+                definedParticipants.style.display = 'none';
             }
         });
     });
 }
 
-// Date Picker
-function initDatePicker() {
-    const minDate = new Date(YEAR, 6, 1); // July 1
-    const maxDate = new Date(YEAR, 7, 31); // August 31
+// Set default dates for the form
+function setDefaultDates() {
+    const today = new Date();
+    const nextMonth = new Date(today);
+    nextMonth.setMonth(nextMonth.getMonth() + 1);
 
-    // Show 1 month on mobile, 2 on desktop
-    const isMobile = window.innerWidth <= 600;
+    const endDate = new Date(today);
+    endDate.setMonth(endDate.getMonth() + 2);
 
-    flatpickrInstance = flatpickr('#date-picker', {
-        mode: 'range',
-        minDate: minDate,
-        maxDate: maxDate,
-        dateFormat: 'Y-m-d',
-        inline: true,
-        showMonths: isMobile ? 1 : 2,
-        onChange: (selectedDateRange) => {
-            if (selectedDateRange.length === 2 || selectedDateRange.length === 1) {
-                // Store current month before clearing (for mobile)
-                const currentMonth = flatpickrInstance.currentMonth;
-                const currentYear = flatpickrInstance.currentYear;
+    const formatDate = (date) => date.toISOString().split('T')[0];
 
-                const start = selectedDateRange[0];
-                const end = selectedDateRange.length === 2 ? selectedDateRange[1] : selectedDateRange[0];
-                addDateRange(start, end);
-                flatpickrInstance.clear();
+    const startInput = document.getElementById('start-date');
+    const endInput = document.getElementById('end-date');
 
-                // Restore the month view on mobile after clearing
-                if (isMobile) {
-                    flatpickrInstance.changeMonth(currentMonth, false);
-                    flatpickrInstance.changeYear(currentYear);
-                }
-            }
-        },
-        onDayCreate: (dObj, dStr, fp, dayElem) => {
-            const dateStr = formatDateLocal(dayElem.dateObj);
+    if (startInput) startInput.value = formatDate(nextMonth);
+    if (endInput) endInput.value = formatDate(endDate);
 
-            // Check if this date is in user's submitted dates (bold red)
-            if (userSubmittedDates.includes(dateStr)) {
-                dayElem.classList.add('user-submitted');
-            }
-            // Check if this date is currently selected but not yet submitted (translucent red)
-            else if (selectedDates.includes(dateStr)) {
-                dayElem.classList.add('user-pending');
-            }
-        }
-    });
+    // Set min date to today
+    if (startInput) startInput.min = formatDate(today);
+    if (endInput) endInput.min = formatDate(today);
 }
 
-// Refresh flatpickr to update highlighting
-function refreshDatePicker() {
-    if (flatpickrInstance) {
-        // Store current view state on mobile
-        const isMobile = window.innerWidth <= 600;
-        const currentMonth = isMobile ? flatpickrInstance.currentMonth : null;
-        const currentYear = isMobile ? flatpickrInstance.currentYear : null;
-
-        flatpickrInstance.redraw();
-
-        // Restore month view on mobile if it was stored
-        if (isMobile && currentMonth !== null) {
-            flatpickrInstance.changeMonth(currentMonth, false);
-            flatpickrInstance.changeYear(currentYear);
-        }
-    }
+// ===== MODAL FUNCTIONS =====
+function openCreateModal() {
+    document.getElementById('create-calendar-modal').classList.remove('hidden');
+    document.body.style.overflow = 'hidden';
 }
 
-// Add date range to selection
-function addDateRange(start, end) {
-    // Generate all dates in range using local date formatting
-    const dates = [];
-    let current = new Date(start);
-    while (current <= end) {
-        dates.push(formatDateLocal(current));
-        current.setDate(current.getDate() + 1);
-    }
-
-    // Add to selectedDates, avoiding duplicates
-    dates.forEach(date => {
-        if (!selectedDates.includes(date)) {
-            selectedDates.push(date);
-        }
-    });
-
-    selectedDates.sort();
-    updateSelectedDatesUI();
-    updateSubmitButton();
-    refreshDatePicker();
+function closeCreateModal() {
+    document.getElementById('create-calendar-modal').classList.add('hidden');
+    document.body.style.overflow = '';
+    document.getElementById('create-calendar-form').reset();
+    setDefaultDates();
 }
 
-// Format date as YYYY-MM-DD using LOCAL time (fixes timezone issue)
-function formatDateLocal(date) {
-    const year = date.getFullYear();
-    const month = String(date.getMonth() + 1).padStart(2, '0');
-    const day = String(date.getDate()).padStart(2, '0');
-    return `${year}-${month}-${day}`;
+// ===== API FUNCTIONS =====
+async function getAuthHeaders() {
+    if (!currentUser) return {};
+    const token = await netlifyIdentity.currentUser().jwt();
+    return {
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json'
+    };
 }
 
-// Format date for display
-function formatDateDisplay(dateStr) {
-    const date = new Date(dateStr + 'T12:00:00');
-    return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
-}
+async function loadUserCalendars() {
+    const calendarsList = document.getElementById('calendars-list');
+    const noCalendars = document.getElementById('no-calendars');
 
-// Update selected dates UI
-function updateSelectedDatesUI() {
-    if (selectedDates.length === 0) {
-        selectedDatesList.innerHTML = '<p class="empty-message">No dates selected for this session; previous submissions below</p>';
-        return;
-    }
-
-    // Group consecutive dates into ranges
-    const ranges = groupIntoRanges(selectedDates);
-
-    selectedDatesList.innerHTML = ranges.map((range, index) => {
-        const displayText = range.start === range.end
-            ? formatDateDisplay(range.start)
-            : `${formatDateDisplay(range.start)} - ${formatDateDisplay(range.end)}`;
-
-        return `
-            <span class="date-tag">
-                ${displayText}
-                <span class="remove-btn" data-range-index="${index}">&times;</span>
-            </span>
-        `;
-    }).join('');
-
-    // Add remove handlers
-    selectedDatesList.querySelectorAll('.remove-btn').forEach(btn => {
-        btn.addEventListener('click', (e) => {
-            const rangeIndex = parseInt(e.target.dataset.rangeIndex);
-            removeRange(ranges[rangeIndex]);
-        });
-    });
-}
-
-// Group dates into consecutive ranges
-function groupIntoRanges(dates) {
-    if (dates.length === 0) return [];
-
-    const ranges = [];
-    let rangeStart = dates[0];
-    let rangeEnd = dates[0];
-
-    for (let i = 1; i < dates.length; i++) {
-        const prevDate = new Date(dates[i-1] + 'T12:00:00');
-        const currDate = new Date(dates[i] + 'T12:00:00');
-        const diffDays = (currDate - prevDate) / (1000 * 60 * 60 * 24);
-
-        if (diffDays === 1) {
-            rangeEnd = dates[i];
-        } else {
-            ranges.push({ start: rangeStart, end: rangeEnd });
-            rangeStart = dates[i];
-            rangeEnd = dates[i];
-        }
-    }
-
-    ranges.push({ start: rangeStart, end: rangeEnd });
-    return ranges;
-}
-
-// Remove a range
-function removeRange(range) {
-    const start = new Date(range.start + 'T12:00:00');
-    const end = new Date(range.end + 'T12:00:00');
-
-    selectedDates = selectedDates.filter(dateStr => {
-        const date = new Date(dateStr + 'T12:00:00');
-        return date < start || date > end;
-    });
-
-    updateSelectedDatesUI();
-    updateSubmitButton();
-    refreshDatePicker();
-}
-
-// Update submit button state
-function updateSubmitButton() {
-    const name = nameSelect.value;
-    // Allow submitting even with no dates (means available all summer)
-    submitBtn.disabled = !name;
-}
-
-// Form handlers
-function initFormHandlers() {
-    nameSelect.addEventListener('change', () => {
-        updateSubmitButton();
-        loadUserSubmissions();
-    });
-
-    submitBtn.addEventListener('click', submitUnavailability);
-    resetBtn.addEventListener('click', resetUserDates);
-}
-
-// Submit unavailability
-async function submitUnavailability() {
-    const name = nameSelect.value;
-    if (!name) return;
-
-    submitBtn.disabled = true;
-    submitBtn.textContent = 'Submitting...';
+    calendarsList.innerHTML = '<div class="loading-spinner">Loading your calendars...</div>';
+    noCalendars.classList.add('hidden');
 
     try {
-        const response = await fetch('/.netlify/functions/submit', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ name, dates: selectedDates })
-        });
+        const headers = await getAuthHeaders();
+        const response = await fetch('/.netlify/functions/get-calendars', { headers });
 
-        const result = await response.json();
+        if (!response.ok) throw new Error('Failed to load calendars');
 
-        if (response.ok) {
-            const message = selectedDates.length === 0
-                ? 'Recorded! You\'re available all summer! 🎉'
-                : 'Your unavailability has been recorded!';
-            showStatus('success', message);
-            selectedDates = [];
-            updateSelectedDatesUI();
-            loadUserSubmissions();
-            loadAllUnavailability();
+        const data = await response.json();
+
+        if (data.calendars && data.calendars.length > 0) {
+            renderCalendars(data.calendars);
         } else {
-            showStatus('error', result.error || 'Failed to submit');
+            calendarsList.innerHTML = '';
+            noCalendars.classList.remove('hidden');
         }
     } catch (error) {
-        showStatus('error', 'Network error. Please try again.');
-        console.error(error);
+        console.error('Error loading calendars:', error);
+        calendarsList.innerHTML = '<p class="error-message">Failed to load calendars. Please try again.</p>';
+    }
+}
+
+function renderCalendars(calendars) {
+    const calendarsList = document.getElementById('calendars-list');
+
+    calendarsList.innerHTML = calendars.map(cal => {
+        const dateRange = cal.dateRangeType === 'open'
+            ? 'Open-ended'
+            : `${formatDisplayDate(cal.startDate)} - ${formatDisplayDate(cal.endDate)}`;
+
+        const participantsText = cal.participantsType === 'open'
+            ? 'Anyone can join'
+            : `${cal.participants?.length || 0} participants`;
+
+        const shareUrl = `${window.location.origin}/c/${cal.id}`;
+
+        return `
+            <div class="calendar-card">
+                <h3>${escapeHtml(cal.name)}</h3>
+                ${cal.description ? `<p class="calendar-card-description">${escapeHtml(cal.description)}</p>` : ''}
+                <div class="calendar-card-meta">
+                    <span>📅 ${dateRange}</span>
+                    <span>👥 ${participantsText}</span>
+                </div>
+                <div class="calendar-card-actions">
+                    <a href="/c/${cal.id}" class="btn btn-primary btn-small">Open</a>
+                    <button class="btn btn-outline btn-small" onclick="copyShareLink('${shareUrl}')">Share Link</button>
+                    <button class="btn btn-outline btn-small" onclick="deleteCalendar('${cal.id}')">Delete</button>
+                </div>
+            </div>
+        `;
+    }).join('');
+}
+
+async function handleCreateCalendar(e) {
+    e.preventDefault();
+
+    const form = e.target;
+    const submitBtn = form.querySelector('button[type="submit"]');
+    submitBtn.disabled = true;
+    submitBtn.textContent = 'Creating...';
+
+    const name = document.getElementById('calendar-name').value.trim();
+    const description = document.getElementById('calendar-description').value.trim();
+    const dateRangeType = document.querySelector('input[name="date-range-type"]:checked').value;
+    const participantsType = document.querySelector('input[name="participants-type"]:checked').value;
+
+    let startDate, endDate;
+    if (dateRangeType === 'custom') {
+        startDate = document.getElementById('start-date').value;
+        endDate = document.getElementById('end-date').value;
+
+        if (!startDate || !endDate) {
+            alert('Please select both start and end dates');
+            submitBtn.disabled = false;
+            submitBtn.textContent = 'Create Calendar';
+            return;
+        }
+
+        if (new Date(endDate) <= new Date(startDate)) {
+            alert('End date must be after start date');
+            submitBtn.disabled = false;
+            submitBtn.textContent = 'Create Calendar';
+            return;
+        }
+    } else {
+        // Open-ended: next 6 months
+        const today = new Date();
+        startDate = today.toISOString().split('T')[0];
+        const sixMonths = new Date(today);
+        sixMonths.setMonth(sixMonths.getMonth() + 6);
+        endDate = sixMonths.toISOString().split('T')[0];
+    }
+
+    let participants = [];
+    if (participantsType === 'defined') {
+        const participantsList = document.getElementById('participants-list').value;
+        participants = participantsList
+            .split(/[\n,]+/)
+            .map(p => p.trim())
+            .filter(p => p.length > 0);
+
+        if (participants.length === 0) {
+            alert('Please add at least one participant');
+            submitBtn.disabled = false;
+            submitBtn.textContent = 'Create Calendar';
+            return;
+        }
+    }
+
+    try {
+        const headers = await getAuthHeaders();
+        const response = await fetch('/.netlify/functions/create-calendar', {
+            method: 'POST',
+            headers,
+            body: JSON.stringify({
+                name,
+                description,
+                dateRangeType,
+                startDate,
+                endDate,
+                participantsType,
+                participants
+            })
+        });
+
+        if (!response.ok) {
+            const error = await response.json();
+            throw new Error(error.message || 'Failed to create calendar');
+        }
+
+        const data = await response.json();
+        closeCreateModal();
+        loadUserCalendars();
+
+        // Show success and offer to copy link
+        const shareUrl = `${window.location.origin}/c/${data.calendar.id}`;
+        if (confirm(`Calendar created! Share this link with your group:\n\n${shareUrl}\n\nCopy to clipboard?`)) {
+            copyShareLink(shareUrl);
+        }
+    } catch (error) {
+        console.error('Error creating calendar:', error);
+        alert('Failed to create calendar: ' + error.message);
     }
 
     submitBtn.disabled = false;
-    submitBtn.textContent = 'Submit Unavailability';
-    updateSubmitButton();
+    submitBtn.textContent = 'Create Calendar';
 }
 
-// Reset user dates
-async function resetUserDates() {
-    const name = nameSelect.value;
-    if (!name) {
-        showStatus('error', 'Please select your name first');
+async function deleteCalendar(calendarId) {
+    if (!confirm('Are you sure you want to delete this calendar? This cannot be undone.')) {
         return;
     }
-
-    if (!confirm(`Are you sure you want to reset all your unavailable dates? This will clear all your previous submissions.`)) {
-        return;
-    }
-
-    resetBtn.disabled = true;
-    resetBtn.textContent = 'Resetting...';
 
     try {
-        const response = await fetch('/.netlify/functions/reset', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ name })
+        const headers = await getAuthHeaders();
+        const response = await fetch(`/.netlify/functions/delete-calendar?id=${calendarId}`, {
+            method: 'DELETE',
+            headers
         });
 
-        const result = await response.json();
+        if (!response.ok) throw new Error('Failed to delete calendar');
 
-        if (response.ok) {
-            showStatus('success', 'Your dates have been reset! You can now submit new dates.');
-            selectedDates = [];
-            updateSelectedDatesUI();
-            loadUserSubmissions();
-            loadAllUnavailability();
-        } else {
-            showStatus('error', result.error || 'Failed to reset');
-        }
+        loadUserCalendars();
     } catch (error) {
-        showStatus('error', 'Network error. Please try again.');
-        console.error(error);
-    }
-
-    resetBtn.disabled = false;
-    resetBtn.textContent = 'Reset My Dates';
-}
-
-// Show status message
-function showStatus(type, message) {
-    submitStatus.className = `status-message ${type}`;
-    submitStatus.textContent = message;
-
-    setTimeout(() => {
-        submitStatus.className = 'status-message';
-    }, 4000);
-}
-
-// Load user's submissions
-async function loadUserSubmissions() {
-    const name = nameSelect.value;
-    if (!name) {
-        userSubmissions.innerHTML = '<p class="empty-message">Select your name to see your submissions</p>';
-        userSubmittedDates = [];
-        refreshDatePicker();
-        return;
-    }
-
-    try {
-        const response = await fetch(`/.netlify/functions/get-user?name=${encodeURIComponent(name)}`);
-        const data = await response.json();
-
-        // Collect all submitted dates for this user
-        userSubmittedDates = [];
-        if (data.submissions && data.submissions.length > 0) {
-            data.submissions.forEach(sub => {
-                if (sub.dates) {
-                    sub.dates.forEach(d => {
-                        if (!userSubmittedDates.includes(d)) {
-                            userSubmittedDates.push(d);
-                        }
-                    });
-                }
-            });
-
-            userSubmissions.innerHTML = data.submissions.map(sub => {
-                let datesDisplay;
-                if (!sub.dates || sub.dates.length === 0) {
-                    datesDisplay = '<span style="color: #065f46;">Available all summer! 🎉</span>';
-                } else {
-                    const ranges = groupIntoRanges(sub.dates);
-                    datesDisplay = ranges.map(r =>
-                        r.start === r.end
-                            ? formatDateDisplay(r.start)
-                            : `${formatDateDisplay(r.start)} - ${formatDateDisplay(r.end)}`
-                    ).join(', ');
-                }
-
-                return `
-                    <div class="submission-item">
-                        <div class="submission-date">Submitted: ${new Date(sub.timestamp).toLocaleString()}</div>
-                        <div class="submission-dates">${sub.dates && sub.dates.length > 0 ? 'Unavailable: ' : ''}${datesDisplay}</div>
-                    </div>
-                `;
-            }).join('');
-        } else {
-            userSubmissions.innerHTML = '<p class="empty-message">No submissions yet</p>';
-        }
-
-        // Refresh date picker to show submitted dates
-        refreshDatePicker();
-    } catch (error) {
-        console.error('Failed to load submissions:', error);
-        userSubmissions.innerHTML = '<p class="empty-message">Failed to load submissions</p>';
-        userSubmittedDates = [];
-        refreshDatePicker();
+        console.error('Error deleting calendar:', error);
+        alert('Failed to delete calendar. Please try again.');
     }
 }
 
-// Load all unavailability data
-async function loadAllUnavailability() {
-    try {
-        const response = await fetch('/.netlify/functions/get-all');
-        const data = await response.json();
-        allUnavailability = data.unavailability || {};
-        renderCalendars();
-    } catch (error) {
-        console.error('Failed to load unavailability:', error);
-        allUnavailability = {};
-        renderCalendars();
-    }
-}
-
-// Render both calendars
-function renderCalendars() {
-    renderMonth(julyCalendar, 6, 'July'); // Month is 0-indexed
-    renderMonth(augustCalendar, 7, 'August');
-}
-
-// Render a single month calendar
-function renderMonth(container, month, monthName) {
-    const firstDay = new Date(YEAR, month, 1);
-    const lastDay = new Date(YEAR, month + 1, 0);
-    const startDayOfWeek = firstDay.getDay(); // 0 = Sunday
-
-    // Header
-    const days = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
-    let html = days.map(d => `<div class="calendar-header">${d}</div>`).join('');
-
-    // Empty cells before first day
-    for (let i = 0; i < startDayOfWeek; i++) {
-        html += '<div class="calendar-day empty"></div>';
-    }
-
-    // Days
-    for (let day = 1; day <= lastDay.getDate(); day++) {
-        const dateStr = `${YEAR}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
-
-        // Check if this is a blocked date
-        const blockedInfo = BLOCKED_DATES[dateStr];
-
-        let unavailablePeople = allUnavailability[dateStr] || [];
-        let unavailableCount = unavailablePeople.length;
-        let isBlocked = false;
-        let blockedReason = '';
-
-        if (blockedInfo) {
-            isBlocked = true;
-            blockedReason = blockedInfo.reason;
-            // For blocked dates, show as fully gray
-            unavailableCount = TOTAL_PEOPLE;
-        }
-
-        // Calculate color - from green to gray
-        const grayness = unavailableCount / TOTAL_PEOPLE;
-        const color = getAvailabilityColor(grayness);
-        const textColor = grayness > 0.5 ? '#fff' : '#333';
-
-        const blockedClass = isBlocked ? 'blocked' : '';
-        const tooltip = isBlocked
-            ? `Blocked: ${blockedReason}`
-            : `${unavailableCount} unavailable`;
-
-        html += `
-            <div class="calendar-day ${blockedClass}"
-                 style="background: ${color}; color: ${textColor};"
-                 data-date="${dateStr}"
-                 data-blocked="${isBlocked}"
-                 data-blocked-reason="${blockedReason}"
-                 title="${tooltip}">
-                <span class="day-number">${day}</span>
-                ${isBlocked ? '<span class="blocked-icon">🚫</span>' : ''}
-                ${!isBlocked && unavailableCount > 0 ? `<span class="unavailable-count">${unavailableCount}</span>` : ''}
-            </div>
-        `;
-    }
-
-    container.innerHTML = html;
-
-    // Add click handlers
-    container.querySelectorAll('.calendar-day:not(.empty)').forEach(dayEl => {
-        dayEl.addEventListener('click', () => {
-            showDateDetails(dayEl.dataset.date);
-        });
+// ===== UTILITY FUNCTIONS =====
+function copyShareLink(url) {
+    navigator.clipboard.writeText(url).then(() => {
+        alert('Link copied to clipboard!');
+    }).catch(() => {
+        prompt('Copy this link:', url);
     });
 }
 
-// Calculate availability color (green to gray)
-function getAvailabilityColor(grayness) {
-    if (grayness === 0) {
-        return '#4ade80'; // Bright green
-    }
-
-    // Interpolate from light green to dark gray
-    const green = { r: 74, g: 222, b: 128 }; // #4ade80
-    const gray = { r: 26, g: 26, b: 26 }; // #1a1a1a
-
-    const r = Math.round(green.r + (gray.r - green.r) * grayness);
-    const g = Math.round(green.g + (gray.g - green.g) * grayness);
-    const b = Math.round(green.b + (gray.b - green.b) * grayness);
-
-    return `rgb(${r}, ${g}, ${b})`;
-}
-
-// Show date details
-function showDateDetails(dateStr) {
-    const blockedInfo = BLOCKED_DATES[dateStr];
-    const unavailablePeople = allUnavailability[dateStr] || [];
+function formatDisplayDate(dateStr) {
+    if (!dateStr) return '';
     const date = new Date(dateStr + 'T12:00:00');
-    const dateDisplay = date.toLocaleDateString('en-US', {
-        weekday: 'long',
-        month: 'long',
-        day: 'numeric',
-        year: 'numeric'
-    });
-
-    let content = `<h4>${dateDisplay}</h4>`;
-
-    if (blockedInfo) {
-        content += `
-            <div class="blocked-message">
-                <p>🚫 <strong>This date is blocked</strong></p>
-                <p>Reason: ${blockedInfo.reason}</p>
-            </div>
-        `;
-    } else if (unavailablePeople.length === 0) {
-        content += '<p class="available-message">🎉 Everyone is available on this date!</p>';
-    } else {
-        const availablePeople = FRIENDS.filter(f => !unavailablePeople.includes(f));
-
-        content += `
-            <p><strong>${unavailablePeople.length} people unavailable:</strong></p>
-            <ul class="unavailable-list">
-                ${unavailablePeople.map(p => `<li>❌ ${p}</li>`).join('')}
-            </ul>
-        `;
-
-        if (availablePeople.length > 0) {
-            content += `
-                <p style="margin-top: 15px;"><strong>${availablePeople.length} people available:</strong></p>
-                <p style="color: #065f46;">✅ ${availablePeople.join(', ')}</p>
-            `;
-        }
-    }
-
-    dateDetailsContent.innerHTML = content;
-    dateDetails.classList.remove('hidden');
-    dateDetails.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
 }
+
+function escapeHtml(text) {
+    const div = document.createElement('div');
+    div.textContent = text;
+    return div.innerHTML;
+}
+
+// Make functions available globally for onclick handlers
+window.copyShareLink = copyShareLink;
+window.deleteCalendar = deleteCalendar;
 
